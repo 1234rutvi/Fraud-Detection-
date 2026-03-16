@@ -50,8 +50,10 @@ st.subheader("📂 Upload Transaction Dataset")
 uploaded_file = st.file_uploader("Upload CSV file")
 
 if uploaded_file is not None:
+    data = pd.read_csv(uploaded_file, encoding="latin1")
+    st.write(data.head())
 
-    data = pd.read_csv(uploaded_file)
+ 
 
     predictions = model.predict(data)
 
