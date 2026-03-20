@@ -3,3 +3,4 @@ pandas
 pdfplumber
 scikit-learn
 plotly
+numpy
