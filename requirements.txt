@@ -1,8 +1,5 @@
-pandas
-numpy
-scikit-learn
 streamlit
-joblib
-matplotlib
-seaborn 
-plotly 
+pandas
+pdfplumber
+scikit-learn
+plotly
