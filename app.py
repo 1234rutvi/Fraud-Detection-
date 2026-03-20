@@ -1,88 +1,62 @@
 import streamlit as st
-import joblib
-import numpy as np
 import pandas as pd
-import plotly.express as px
 
-# Load trained model
-model = joblib.load("fraud_model.pkl")
+from parser import extract_pdf_data_advanced
+from fraud_model import detect_fraud
+from chatbot import chatbot
+from database import save_to_db
+from utils import categorize_ai
 
-st.set_page_config(page_title="Fraud Detection Dashboard", layout="wide")
+st.set_page_config(page_title="Fraud Detection System", layout="wide")
 
-st.title("💳 AI Fraud Detection System")
+st.title("💳 Bank Statement Fraud Detection System")
 
-st.write("Machine Learning system to detect fraudulent transactions.")
+file = st.file_uploader("Upload Bank Statement (CSV or PDF)", type=["csv", "pdf"])
 
-# Sidebar inputs
-st.sidebar.header("Transaction Details")
+if file:
+    # Load file
+    if file.type == "text/csv":
+        df = pd.read_csv(file)
+    else:
+        df = extract_pdf_data_advanced(file)
 
-time = st.sidebar.number_input("Transaction Time", value=0)
-amount = st.sidebar.number_input("Transaction Amount", value=0)
+    st.subheader("📄 Raw Data")
+    st.dataframe(df)
 
-v1 = st.sidebar.number_input("V1", value=0.0)
-v2 = st.sidebar.number_input("V2", value=0.0)
-v3 = st.sidebar.number_input("V3", value=0.0)
+    # Clean data
+    df = df.dropna()
+    df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce")
+    df = df.dropna()
 
-if st.sidebar.button("Analyze Transaction"):
+    # Categorization
+    df["Category"] = df["Description"].astype(str).apply(categorize_ai)
 
-    input_data = np.array([[time, v1, v2, v3, amount]])
+    # Fraud detection
+    df = detect_fraud(df)
 
-    prediction = model.predict(input_data)
+    # Save to database
+    save_to_db(df)
 
-    prob = model.predict_proba(input_data)[0][1] * 100
+    st.subheader("🚨 Fraud Detection Results")
+    st.dataframe(df)
 
-    col1, col2 = st.columns(2)
+    # Dashboard
+    st.subheader("📊 Dashboard")
 
-    with col1:
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Transactions", len(df))
+    col2.metric("Fraud Detected", len(df[df["ML_Flag"] == "Fraud"]))
+    col3.metric("Total Amount", f"₹ {df['Amount'].sum():,.2f}")
 
-        if prediction[0] == 1:
-            st.error("⚠ Fraudulent Transaction Detected")
-        else:
-            st.success("✅ Transaction is Legitimate")
+    st.bar_chart(df["Category"].value_counts())
 
-    with col2:
+    # Chatbot
+    st.subheader("🤖 Ask Your Data")
+    query = st.text_input("Ask something (e.g. total, fraud, food)")
 
-        st.metric("Fraud Risk Score", f"{prob:.2f}%")
+    if query:
+        response = chatbot(query, df)
+        st.write(response)
 
-# Upload dataset
-st.subheader("📂 Upload Transaction Dataset")
-
-uploaded_file = st.file_uploader("Upload CSV file")
-
-if uploaded_file is not None:
-    data = pd.read_csv(uploaded_file, encoding="latin1")
-    st.write(data.head())
-
- 
-
-    predictions = model.predict(data)
-
-    data["Fraud Prediction"] = predictions
-
-    fraud_count = sum(predictions == 1)
-    normal_count = sum(predictions == 0)
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.metric("Fraud Transactions", fraud_count)
-
-    with col2:
-        st.metric("Normal Transactions", normal_count)
-
-    st.subheader("Fraud Analytics")
-
-    chart_data = pd.DataFrame({
-        "Transaction Type": ["Fraud", "Normal"],
-        "Count": [fraud_count, normal_count]
-    })
-
-    fig = px.pie(chart_data,
-                 values="Count",
-                 names="Transaction Type",
-                 title="Fraud vs Normal Transactions")
-
-    st.plotly_chart(fig)
-
-    st.subheader("Dataset Preview")
-    st.write(data.head())
+else:
+    st.info("Please upload a file to start.")
