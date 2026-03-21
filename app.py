@@ -1,25 +1,30 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import tempfile
 
+from auth import check_auth
 from parser import extract_pdf_data_advanced
 from fraud_model import detect_fraud
 from chatbot import chatbot
 from database import save_to_db
 from utils import categorize_ai
-from auth import check_auth
 from alerts import send_email_alert
 
 # -----------------------------
-# 🔐 AUTHENTICATION
+# 🔐 AUTH (MUST BE FIRST)
 # -----------------------------
-from auth import check_auth
-
 check_auth()
 
+# Sidebar user info + logout
 st.sidebar.success(f"Logged in as {st.session_state['user']}")
+
+if st.sidebar.button("🚪 Logout"):
+    st.session_state["logged_in"] = False
+    st.rerun()
+
 # -----------------------------
-# 🎨 UI STYLING
+# 🎨 PAGE CONFIG + STYLE
 # -----------------------------
 st.set_page_config(page_title="Fraud Detection System", layout="wide")
 
@@ -56,12 +61,16 @@ file = st.file_uploader("📂 Upload Bank Statement (CSV or PDF)", type=["csv", 
 if file:
 
     # -----------------------------
-    # 📥 LOAD FILE
+    # 📥 LOAD FILE (FIXED FOR RENDER)
     # -----------------------------
-    if file.type == "text/csv":
+    if file.name.endswith(".csv"):
         df = pd.read_csv(file)
     else:
-        df = extract_pdf_data_advanced(file)
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp.write(file.read())
+            tmp_path = tmp.name
+
+        df = extract_pdf_data_advanced(tmp_path)
 
     st.subheader("📄 Raw Data")
     st.dataframe(df)
@@ -92,17 +101,13 @@ if file:
     # -----------------------------
     # 📊 KPI METRICS
     # -----------------------------
-    total_txn = len(df)
     fraud_df = df[df["ML_Flag"] == "Fraud"]
-    fraud_count = len(fraud_df)
-    total_amount = df["Amount"].sum()
 
-    st.markdown("---")
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("💳 Total Transactions", total_txn)
-    col2.metric("🚨 Fraud Detected", fraud_count)
-    col3.metric("💰 Total Amount", f"₹ {total_amount:,.2f}")
+    col1.metric("💳 Total Transactions", len(df))
+    col2.metric("🚨 Fraud Detected", len(fraud_df))
+    col3.metric("💰 Total Amount", f"₹ {df['Amount'].sum():,.2f}")
 
     # -----------------------------
     # 📈 CHARTS
@@ -117,20 +122,22 @@ if file:
     st.plotly_chart(fig2, use_container_width=True)
 
     # -----------------------------
-    # 🚨 FRAUD SECTION
+    # 🚨 FRAUD SECTION + EMAIL
     # -----------------------------
     st.markdown("---")
     st.subheader("🚨 Suspicious Transactions")
 
     if not fraud_df.empty:
-        st.error(f"{fraud_count} suspicious transactions detected!")
+        st.error(f"{len(fraud_df)} suspicious transactions detected!")
         st.dataframe(fraud_df)
 
         # 📧 EMAIL ALERT
-        if send_email_alert(fraud_df):
+        email_sent = send_email_alert(fraud_df)
+
+        if email_sent:
             st.success("📧 Alert email sent successfully!")
         else:
-            st.warning("⚠️ Email sending failed")
+            st.warning("⚠️ Email sending failed (check App Password)")
 
     else:
         st.success("✅ No suspicious transactions detected.")
