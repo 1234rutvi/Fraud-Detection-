@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
 conn.commit()
 
 # -----------------------------
-# 🌌 BACKGROUND + RESPONSIVE UI
+# 🌌 BACKGROUND IMAGE
 # -----------------------------
 def set_background():
     logo_path = os.path.join(os.path.dirname(__file__), "logo.png")
@@ -49,20 +49,11 @@ def set_background():
             margin: auto;
             text-align: center;
         }}
-
-        @media (max-width: 768px) {{
-            .glass-box {{
-                padding: 20px;
-                width: 90%;
-            }}
-        }}
         </style>
         """, unsafe_allow_html=True)
-    else:
-        st.error("❌ logo.png not found")
 
 # -----------------------------
-# 🎯 CENTER CONTAINER
+# 🎯 CENTER BOX
 # -----------------------------
 def center_start():
     st.markdown("""
@@ -88,7 +79,6 @@ def login():
     center_start()
 
     st.markdown("<h2 style='color:white;'>🔐 Login</h2>", unsafe_allow_html=True)
-    st.caption("Secure Login • Fraud Detection System")
 
     user = st.text_input("Username", key="login_user")
     password = st.text_input("Password", type="password", key="login_pass")
@@ -127,7 +117,6 @@ def signup():
     center_start()
 
     st.markdown("<h2 style='color:white;'>📝 Sign Up</h2>", unsafe_allow_html=True)
-    st.caption("Create your account")
 
     new_user = st.text_input("Create Username", key="signup_user")
     new_pass = st.text_input("Create Password", type="password", key="signup_pass")
@@ -159,7 +148,7 @@ def signup():
     center_end()
 
 # -----------------------------
-# 🔁 PAGE CONTROL
+# 🔁 PAGE CONTROL (NO RADIO)
 # -----------------------------
 def auth_page():
     if "page" not in st.session_state:
