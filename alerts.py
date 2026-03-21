@@ -3,7 +3,7 @@ from email.mime.text import MIMEText
 
 def send_email_alert(fraud_df):
     sender = "your_email@gmail.com"
-    password = "your_app_password"
+    password = "zyaa htln clfr vxnt"   # 👈 IMPORTANT
     receiver = "your_email@gmail.com"
 
     subject = "🚨 Fraud Alert Detected!"
@@ -21,11 +21,12 @@ def send_email_alert(fraud_df):
 
     try:
         server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.ehlo()
         server.starttls()
         server.login(sender, password)
         server.send_message(msg)
         server.quit()
         return True
     except Exception as e:
-        print(e)
+        print("EMAIL ERROR:", e)
         return False
