@@ -13,9 +13,11 @@ from alerts import send_email_alert
 # -----------------------------
 # 🔐 AUTHENTICATION
 # -----------------------------
-check_auth()
-st.sidebar.success(f"Logged in as {st.session_state['user']}")
+from auth import check_auth
 
+check_auth()
+
+st.sidebar.success(f"Logged in as {st.session_state['user']}")
 # -----------------------------
 # 🎨 UI STYLING
 # -----------------------------
