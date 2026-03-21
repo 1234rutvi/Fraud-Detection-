@@ -137,7 +137,7 @@ if file:
         if email_sent:
             st.success("📧 Alert email sent successfully!")
         else:
-            st.warning("⚠️ Email sending failed (check App Password)")
+            st.error("❌ Email failed - check logs")
 
     else:
         st.success("✅ No suspicious transactions detected.")
