@@ -2,8 +2,8 @@ import smtplib
 from email.mime.text import MIMEText
 
 def send_email_alert(fraud_df):
-    sender = "your_email@gmail.com"
-    password = "zyaa htln clfr vxnt"   # 👈 IMPORTANT
+    sender = "rutvir2211@gmail.com"
+    password = "zyaahtlnclfrvxnt"   # 👈 IMPORTANT
     receiver = "your_email@gmail.com"
 
     subject = "🚨 Fraud Alert Detected!"
