@@ -1,6 +1,7 @@
 import streamlit as st
 import sqlite3
 import os
+import base64
 
 # -----------------------------
 # 💾 DATABASE SETUP
@@ -17,63 +18,88 @@ CREATE TABLE IF NOT EXISTS users (
 conn.commit()
 
 # -----------------------------
-# 🎨 BACKGROUND + GLASS UI
+# 🌌 BACKGROUND + RESPONSIVE UI
 # -----------------------------
-def apply_style():
+def set_background():
+    logo_path = os.path.join(os.path.dirname(__file__), "logo.png")
+
+    if os.path.exists(logo_path):
+        with open(logo_path, "rb") as img:
+            encoded = base64.b64encode(img.read()).decode()
+
+        st.markdown(f"""
+        <style>
+        .stApp {{
+            background:
+                linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.75)),
+                url("data:image/png;base64,{encoded}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }}
+
+        .glass-box {{
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            width: 90%;
+            max-width: 360px;
+            margin: auto;
+            text-align: center;
+        }}
+
+        @media (max-width: 768px) {{
+            .glass-box {{
+                padding: 20px;
+                width: 90%;
+            }}
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+    else:
+        st.error("❌ logo.png not found")
+
+# -----------------------------
+# 🎯 CENTER CONTAINER
+# -----------------------------
+def center_start():
     st.markdown("""
-    <style>
-    body {
-        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    }
-
-    .stApp {
-        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    }
-
-    .glass {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 30px;
-        border-radius: 15px;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-        text-align: center;
-    }
-    </style>
+    <div style="
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        min-height:100vh;
+        padding:20px;
+    ">
     """, unsafe_allow_html=True)
 
-# -----------------------------
-# 🖼️ LOAD LOGO
-# -----------------------------
-def load_logo():
-    logo_path = os.path.join(os.getcwd(), "logo.png")
-    if os.path.exists(logo_path):
-        st.image(logo_path, width=350)
-    else:
-        st.warning("Logo not found")
+    st.markdown('<div class="glass-box">', unsafe_allow_html=True)
+
+def center_end():
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 # -----------------------------
 # 🔐 LOGIN
 # -----------------------------
 def login():
-    apply_style()
+    set_background()
+    center_start()
 
-    col1, col2 = st.columns(2)
+    st.markdown("<h2 style='color:white;'>🔐 Login</h2>", unsafe_allow_html=True)
+    st.caption("Secure Login • Fraud Detection System")
 
-    with col1:
-        load_logo()
-        st.markdown(
-            "<h2 style='text-align:center;color:white;'>Fraud Detection System</h2>",
-            unsafe_allow_html=True
-        )
+    user = st.text_input("Username", key="login_user")
+    password = st.text_input("Password", type="password", key="login_pass")
 
-    with col2:
-        st.markdown('<div class="glass">', unsafe_allow_html=True)
-        st.subheader("🔐 Login")
+    if st.button("Login", use_container_width=True):
+        user = user.strip()
+        password = password.strip()
 
-        user = st.text_input("Username", key="login_user").strip()
-        password = st.text_input("Password", type="password", key="login_pass").strip()
-
-        if st.button("Login", key="login_btn"):
+        if not user or not password:
+            st.warning("Enter username & password")
+        else:
             cursor.execute(
                 "SELECT * FROM users WHERE username=? AND password=?",
                 (user, password)
@@ -85,35 +111,34 @@ def login():
             else:
                 st.error("Invalid credentials")
 
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    if st.button("Create New Account", use_container_width=True):
+        st.session_state["page"] = "signup"
+        st.rerun()
+
+    center_end()
 
 # -----------------------------
 # 📝 SIGNUP
 # -----------------------------
 def signup():
-    apply_style()
+    set_background()
+    center_start()
 
-    col1, col2 = st.columns(2)
+    st.markdown("<h2 style='color:white;'>📝 Sign Up</h2>", unsafe_allow_html=True)
+    st.caption("Create your account")
 
-    with col1:
-        load_logo()
-        st.markdown(
-            "<h2 style='text-align:center;color:white;'>Create Your Account</h2>",
-            unsafe_allow_html=True
-        )
+    new_user = st.text_input("Create Username", key="signup_user")
+    new_pass = st.text_input("Create Password", type="password", key="signup_pass")
 
-    with col2:
-        st.markdown('<div class="glass">', unsafe_allow_html=True)
-        st.subheader("📝 Sign Up")
+    if st.button("Sign Up", use_container_width=True):
+        new_user = new_user.strip()
+        new_pass = new_pass.strip()
 
-        new_user = st.text_input("Create Username", key="signup_user").strip()
-        new_pass = st.text_input("Create Password", type="password", key="signup_pass").strip()
-
-        if st.button("Sign Up", key="signup_btn"):
-            if not new_user or not new_pass:
-                st.warning("Fill all fields")
-                return
-
+        if not new_user or not new_pass:
+            st.warning("Fill all fields")
+        else:
             cursor.execute("SELECT * FROM users WHERE username=?", (new_user,))
             if cursor.fetchone():
                 st.error("User already exists!")
@@ -121,33 +146,28 @@ def signup():
                 cursor.execute("INSERT INTO users VALUES (?, ?)", (new_user, new_pass))
                 conn.commit()
 
-                st.success("Account created successfully! Redirecting to login...")
-
-                # 🔁 AUTO SWITCH TO LOGIN
-                st.session_state["show_login"] = True
+                st.success("Account created! Redirecting to login...")
+                st.session_state["page"] = "login"
                 st.rerun()
 
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    if st.button("Already have an account? Login", use_container_width=True):
+        st.session_state["page"] = "login"
+        st.rerun()
+
+    center_end()
 
 # -----------------------------
 # 🔁 PAGE CONTROL
 # -----------------------------
 def auth_page():
-    if "show_login" not in st.session_state:
-        st.session_state["show_login"] = True
+    if "page" not in st.session_state:
+        st.session_state["page"] = "login"
 
-    option = st.radio(
-        "",
-        ["Login", "Sign Up"],
-        horizontal=True,
-        index=0 if st.session_state["show_login"] else 1
-    )
-
-    if option == "Login":
-        st.session_state["show_login"] = True
+    if st.session_state["page"] == "login":
         login()
     else:
-        st.session_state["show_login"] = False
         signup()
 
 # -----------------------------
