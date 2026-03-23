@@ -131,17 +131,7 @@ if file:
         st.error(f"{len(fraud_df)} suspicious transactions detected!")
         st.dataframe(fraud_df)
 
-        # 📧 EMAIL ALERT
-        email_sent = send_email_alert(fraud_df)
-
-        if email_sent:
-            st.success("📧 Alert email sent successfully!")
-        else:
-            st.error("❌ Email failed - check logs")
-
-    else:
-        st.success("✅ No suspicious transactions detected.")
-
+        
     # -----------------------------
     # 🤖 CHATBOT
     # -----------------------------
