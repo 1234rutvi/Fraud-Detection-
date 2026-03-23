@@ -61,26 +61,60 @@ file = st.file_uploader("📂 Upload Bank Statement (CSV or PDF)", type=["csv", 
 if file:
 
     # -----------------------------
-    # 📥 LOAD FILE (FIXED FOR RENDER)
+    # 📥 LOAD FILE
     # -----------------------------
-    if file.name.endswith(".csv"):
-        df = pd.read_csv(file)
-    else:
-        with tempfile.NamedTemporaryFile(delete=False) as tmp:
-            tmp.write(file.read())
-            tmp_path = tmp.name
+    try:
+        if file.name.endswith(".csv"):
+            df = pd.read_csv(file)
+        else:
+            with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                tmp.write(file.read())
+                tmp_path = tmp.name
 
-        df = extract_pdf_data_advanced(tmp_path)
+            df = extract_pdf_data_advanced(tmp_path)
 
-    st.subheader("📄 Raw Data")
-    st.dataframe(df)
+    except Exception as e:
+        st.error(f"Error reading file: {e}")
+        st.stop()
 
     # -----------------------------
-    # 🧹 CLEAN DATA
+    # 🔍 DEBUG (IMPORTANT)
     # -----------------------------
-    df = df.dropna()
+    st.subheader("📄 Raw Data Preview")
+    st.write("Columns:", df.columns.tolist())
+    st.write("Shape:", df.shape)
+    st.dataframe(df.head())
+
+    # -----------------------------
+    # 🧹 CLEAN DATA (FIXED)
+    # -----------------------------
+    df.columns = df.columns.str.strip()
+
+    # Auto-detect Amount column
+    possible_amount_cols = ["Amount", "Debit", "Credit", "Txn Amount"]
+
+    for col in possible_amount_cols:
+        if col in df.columns:
+            df["Amount"] = df[col]
+            break
+
+    if "Amount" not in df.columns:
+        st.error(f"'Amount' column not found. Columns: {df.columns.tolist()}")
+        st.stop()
+
+    if "Description" not in df.columns:
+        st.error(f"'Description' column not found. Columns: {df.columns.tolist()}")
+        st.stop()
+
+    # Convert Amount safely
     df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce")
-    df = df.dropna()
+
+    # Drop only invalid Amount rows
+    df = df.dropna(subset=["Amount"])
+
+    if df.empty:
+        st.error("No valid transaction data found after cleaning.")
+        st.stop()
 
     # -----------------------------
     # 🧠 CATEGORY DETECTION
@@ -90,13 +124,20 @@ if file:
     # -----------------------------
     # 🤖 FRAUD DETECTION
     # -----------------------------
-    with st.spinner("🔍 Analyzing transactions..."):
-        df = detect_fraud(df)
+    try:
+        with st.spinner("🔍 Analyzing transactions..."):
+            df = detect_fraud(df)
+    except Exception as e:
+        st.error(f"Fraud detection failed: {e}")
+        st.stop()
 
     # -----------------------------
     # 💾 SAVE TO DATABASE
     # -----------------------------
-    save_to_db(df)
+    try:
+        save_to_db(df)
+    except:
+        pass  # avoid crash if DB fails
 
     # -----------------------------
     # 📊 KPI METRICS
@@ -131,7 +172,15 @@ if file:
         st.error(f"{len(fraud_df)} suspicious transactions detected!")
         st.dataframe(fraud_df)
 
-        
+        # Send email alert
+        try:
+            send_email_alert(fraud_df)
+        except:
+            st.warning("Email alert failed.")
+
+    else:
+        st.success("No fraud detected ✅")
+
     # -----------------------------
     # 🤖 CHATBOT
     # -----------------------------
@@ -141,8 +190,11 @@ if file:
     query = st.text_input("Ask something like 'total', 'fraud', 'food'")
 
     if query:
-        response = chatbot(query, df)
-        st.write(response)
+        try:
+            response = chatbot(query, df)
+            st.write(response)
+        except:
+            st.error("Chatbot error.")
 
     # -----------------------------
     # 📥 DOWNLOAD
