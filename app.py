@@ -16,7 +16,6 @@ from alerts import send_email_alert
 # -----------------------------
 check_auth()
 
-# Sidebar user info + logout
 st.sidebar.success(f"Logged in as {st.session_state['user']}")
 
 if st.sidebar.button("🚪 Logout"):
@@ -24,7 +23,7 @@ if st.sidebar.button("🚪 Logout"):
     st.rerun()
 
 # -----------------------------
-# 🎨 PAGE CONFIG + STYLE
+# 🎨 PAGE CONFIG
 # -----------------------------
 st.set_page_config(page_title="Fraud Detection System", layout="wide")
 
@@ -46,17 +45,15 @@ div[data-testid="stMetric"] {
 # -----------------------------
 # 🏷️ HEADER
 # -----------------------------
-st.markdown("""
-# 💳 Fraud Detection System
-### Upload your bank statement (CSV/PDF) to detect suspicious transactions and gain insights.
-""")
+st.title("💳 Fraud Detection System")
+st.caption("Upload your bank statement (CSV/PDF) to detect suspicious transactions.")
 
 st.markdown("---")
 
 # -----------------------------
 # 📂 FILE UPLOAD
 # -----------------------------
-file = st.file_uploader("📂 Upload Bank Statement (CSV or PDF)", type=["csv", "pdf"])
+file = st.file_uploader("📂 Upload Bank Statement", type=["csv", "pdf"])
 
 if file:
 
@@ -74,11 +71,11 @@ if file:
             df = extract_pdf_data_advanced(tmp_path)
 
     except Exception as e:
-        st.error(f"Error reading file: {e}")
+        st.error(f"❌ Error reading file: {e}")
         st.stop()
 
     # -----------------------------
-    # 🔍 DEBUG (IMPORTANT)
+    # 🔍 DEBUG PREVIEW
     # -----------------------------
     st.subheader("📄 Raw Data Preview")
     st.write("Columns:", df.columns.tolist())
@@ -86,7 +83,7 @@ if file:
     st.dataframe(df.head())
 
     # -----------------------------
-    # 🧹 CLEAN DATA (FIXED)
+    # 🧹 CLEAN DATA
     # -----------------------------
     df.columns = df.columns.str.strip()
 
@@ -99,25 +96,22 @@ if file:
             break
 
     if "Amount" not in df.columns:
-        st.error(f"'Amount' column not found. Columns: {df.columns.tolist()}")
+        st.error(f"❌ 'Amount' column not found. Available: {df.columns.tolist()}")
         st.stop()
 
     if "Description" not in df.columns:
-        st.error(f"'Description' column not found. Columns: {df.columns.tolist()}")
+        st.error(f"❌ 'Description' column not found.")
         st.stop()
 
-    # Convert Amount safely
     df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce")
-
-    # Drop only invalid Amount rows
     df = df.dropna(subset=["Amount"])
 
     if df.empty:
-        st.error("No valid transaction data found after cleaning.")
+        st.error("❌ No valid transaction data found.")
         st.stop()
 
     # -----------------------------
-    # 🧠 CATEGORY DETECTION
+    # 🧠 CATEGORY
     # -----------------------------
     df["Category"] = df["Description"].astype(str).apply(categorize_ai)
 
@@ -125,24 +119,24 @@ if file:
     # 🤖 FRAUD DETECTION
     # -----------------------------
     try:
-        with st.spinner("🔍 Analyzing transactions..."):
+        with st.spinner("🔍 Detecting fraud..."):
             df = detect_fraud(df)
     except Exception as e:
-        st.error(f"Fraud detection failed: {e}")
+        st.error(f"❌ Fraud detection failed: {e}")
         st.stop()
 
     # -----------------------------
-    # 💾 SAVE TO DATABASE
+    # 💾 DATABASE
     # -----------------------------
     try:
         save_to_db(df)
     except:
-        pass  # avoid crash if DB fails
+        pass
 
     # -----------------------------
     # 📊 KPI METRICS
     # -----------------------------
-    fraud_df = df[df["ML_Flag"] == "Fraud"]
+    fraud_df = df[df["Final_Flag"] == "Fraud"]
 
     col1, col2, col3 = st.columns(3)
 
@@ -151,7 +145,7 @@ if file:
     col3.metric("💰 Total Amount", f"₹ {df['Amount'].sum():,.2f}")
 
     # -----------------------------
-    # 📈 CHARTS
+    # 📈 VISUALS
     # -----------------------------
     st.markdown("---")
     st.subheader("📊 Financial Insights")
@@ -159,11 +153,21 @@ if file:
     fig1 = px.pie(df, names="Category", values="Amount", title="Spending by Category")
     st.plotly_chart(fig1, use_container_width=True)
 
-    fig2 = px.line(df, y="Amount", title="Transaction Trend")
+    fig2 = px.line(df, x=df.index, y="Amount", title="Transaction Trend Over Time")
     st.plotly_chart(fig2, use_container_width=True)
 
     # -----------------------------
-    # 🚨 FRAUD SECTION + EMAIL
+    # 🔍 FRAUD ANALYSIS TABLE
+    # -----------------------------
+    st.markdown("---")
+    st.subheader("🔍 Fraud Analysis")
+
+    st.dataframe(
+        df[["Date", "Description", "Amount", "ML_Flag", "Rule_Flag", "Final_Flag"]]
+    )
+
+    # -----------------------------
+    # 🚨 FRAUD SECTION
     # -----------------------------
     st.markdown("---")
     st.subheader("🚨 Suspicious Transactions")
@@ -172,14 +176,13 @@ if file:
         st.error(f"{len(fraud_df)} suspicious transactions detected!")
         st.dataframe(fraud_df)
 
-        # Send email alert
         try:
             send_email_alert(fraud_df)
         except:
-            st.warning("Email alert failed.")
+            st.warning("⚠ Email alert failed.")
 
     else:
-        st.success("No fraud detected ✅")
+        st.success("✅ No fraud detected")
 
     # -----------------------------
     # 🤖 CHATBOT
@@ -187,7 +190,7 @@ if file:
     st.markdown("---")
     st.subheader("🤖 Ask Your Data")
 
-    query = st.text_input("Ask something like 'total', 'fraud', 'food'")
+    query = st.text_input("Ask: total, fraud, food...")
 
     if query:
         try:
@@ -202,11 +205,11 @@ if file:
     st.markdown("---")
 
     st.download_button(
-        label="📥 Download Full Report",
+        label="📥 Download Report",
         data=df.to_csv(index=False),
         file_name="fraud_report.csv",
         mime="text/csv"
     )
 
 else:
-    st.warning("📂 Please upload a bank statement to begin analysis.")
+    st.warning("📂 Upload a bank statement to begin.")
